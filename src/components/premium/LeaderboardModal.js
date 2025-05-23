@@ -1,14 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function LeaderboardModal({ isOpen, onClose }) {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch leaderboard data when modal opens
-  useState(() => {
+  useEffect(() => {
     if (isOpen) {
       fetchLeaderboardData();
     }
@@ -50,6 +49,7 @@ export default function LeaderboardModal({ isOpen, onClose }) {
           <button 
             onClick={onClose} 
             className="text-foreground-alt hover:text-foreground"
+            aria-label="Close leaderboard modal"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
@@ -59,7 +59,7 @@ export default function LeaderboardModal({ isOpen, onClose }) {
         
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
           </div>
         ) : error ? (
           <div className="text-center py-4">

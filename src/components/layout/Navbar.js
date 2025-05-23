@@ -6,7 +6,7 @@ import ThemeToggle from './ThemeToggle';
 
 export default function Navbar({ isPremiumUser = false, showPremiumFeatures = false }) {
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
+     {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

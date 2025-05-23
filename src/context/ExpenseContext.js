@@ -16,44 +16,43 @@ export function ExpenseProvider({ children }) {
     // Load saved preference for items per page
     const savedItemsPerPage = localStorage.getItem('itemsPerPage');
     if (savedItemsPerPage) {
-      setItemsPerPage(parseInt(savedItemsPerPage));
+      setItemsPerPage(parseInt(savedItemsPerPage, 10));
     }
-    
+
     loadExpenses();
   }, []);
 
   const loadExpenses = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication required');
-      }
+      if (!token) throw new Error('Authentication required');
 
       const response = await fetch('http://localhost:8080/api/expenses/user', {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to load expenses');
+        const errText = await response.text();
+        throw new Error(`Failed to load expenses: ${errText || response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (!data || !data.expenses) {
-        throw new Error('Invalid response format');
+        throw new Error('Invalid response format: Missing expenses array');
       }
-      
-      // Sort expenses by date (newest first)
+
+      // Sort by createdAt descending
       const sortedExpenses = [...data.expenses].sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
-      
+
       setExpenses(sortedExpenses);
       setTotalExpenses(sortedExpenses.length);
     } catch (error) {
@@ -65,63 +64,68 @@ export function ExpenseProvider({ children }) {
   };
 
   const addExpense = async (expenseData) => {
+    setError(null); // Clear previous error before adding
+
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication required');
-      }
+      if (!token) throw new Error('Authentication required');
 
       const response = await fetch('http://localhost:8080/api/expenses/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(expenseData)
+        body: JSON.stringify(expenseData),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Error adding expense');
       }
-      
-      // Reload expenses to get the updated list
+
+      // Reload expenses after successful add
       await loadExpenses();
       return { success: true };
     } catch (error) {
       console.error('Error adding expense:', error);
+      setError(error.message);
       return { success: false, error: error.message };
     }
   };
 
   const deleteExpense = async (expenseId) => {
+    setError(null); // Clear previous error before deleting
+
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication required');
-      }
+      if (!token) throw new Error('Authentication required');
 
       const response = await fetch(`http://localhost:8080/api/expenses/${expenseId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
-      
+
       if (!response.ok) {
-        throw new Error('Error deleting expense');
+        const errorText = await response.text();
+        throw new Error(`Error deleting expense: ${errorText || response.statusText}`);
       }
-      
-      // Optimistically update UI
-      setExpenses(expenses.filter(expense => 
-        (expense.id !== expenseId) && (expense._id !== expenseId)
-      ));
-      
-      // Reload expenses to ensure sync with server
-      await loadExpenses();
+
+      setExpenses((prevExpenses) => {
+        const updated = prevExpenses.filter(
+          (expense) =>
+            String(expense.id) !== String(expenseId) && String(expense._id) !== String(expenseId)
+        );
+        setTotalExpenses(updated.length);
+        return updated;
+      });
+
       return { success: true };
     } catch (error) {
       console.error('Error deleting expense:', error);
+      setError(error.message);
       return { success: false, error: error.message };
     }
   };
@@ -139,20 +143,22 @@ export function ExpenseProvider({ children }) {
   };
 
   return (
-    <ExpenseContext.Provider value={{
-      expenses,
-      isLoading,
-      error,
-      currentPage,
-      itemsPerPage,
-      totalExpenses,
-      setCurrentPage,
-      loadExpenses,
-      addExpense,
-      deleteExpense,
-      updateItemsPerPage,
-      getPaginatedExpenses
-    }}>
+    <ExpenseContext.Provider
+      value={{
+        expenses,
+        isLoading,
+        error,
+        currentPage,
+        itemsPerPage,
+        totalExpenses,
+        setCurrentPage,
+        loadExpenses,
+        addExpense,
+        deleteExpense,
+        updateItemsPerPage,
+        getPaginatedExpenses,
+      }}
+    >
       {children}
     </ExpenseContext.Provider>
   );
